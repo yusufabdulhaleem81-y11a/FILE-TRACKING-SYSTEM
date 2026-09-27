@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  OFFICER
+  VIEWER
+}
+
+enum FileStatus {
+  REGISTERED
+  IN_TRANSIT
+  RECEIVED
+  COMPLETED
+}
+
+enum MovementType {
+  CREATED
+  SENT
+  RECEIVED
+}
+
+enum NotificationType {
+  FILE_SENT
+  FILE_RECEIVED
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String
+  passwordHash String
+  role         Role       @default(OFFICER)
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  createdFiles      File[]         @relation("FileCreator")
+  sentMovements     FileMovement[] @relation("MovementSender")
+  receivedMovements FileMovement[] @relation("MovementReceiver")
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+
+  @@index([departmentId])
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  code      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users             User[]
+  currentFiles      File[]         @relation("CurrentLocation")
+  outgoingMovements FileMovement[] @relation("FromDepartment")
+  incomingMovements FileMovement[] @relation("ToDepartment")
+}
+
+model File {
+  id                  String     @id @default(cuid())
+  trackingNumber      String     @unique
+  title               String
+  description         String?
+  status              FileStatus @default(REGISTERED)
+  storageKey          String?
+  originalFilename    String?
+  mimeType            String?
+  sizeBytes           Int?
+  createdById         String
+  createdBy           User       @relation("FileCreator", fields: [createdById], references: [id])
+  currentDepartmentId String
+  currentDepartment   Department @relation("CurrentLocation", fields: [currentDepartmentId], references: [id])
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  movements     FileMovement[]
+  notifications Notification[]
+
+  @@index([status])
+  @@index([currentDepartmentId])
+  @@index([createdById])
+  @@index([title])
+}
+
+model FileMovement {
+  id               String      @id @default(cuid())
+  fileId           String
+  file             File        @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  type             MovementType
+  fromDepartmentId String?
+  fromDepartment   Department? @relation("FromDepartment", fields: [fromDepartmentId], references: [id])
+  toDepartmentId   String?
+  toDepartment     Department? @relation("ToDepartment", fields: [toDepartmentId], references: [id])
+  sentById         String?
+  sentBy           User?       @relation("MovementSender", fields: [sentById], references: [id])
+  sentAt           DateTime?
+  receivedById     String?
+  receivedBy       User?       @relation("MovementReceiver", fields: [receivedById], references: [id])
+  receivedAt       DateTime?
+  comment          String?
+  createdAt        DateTime    @default(now())
+
+  @@index([fileId, createdAt])
+  @@index([type, receivedAt])
+  @@index([toDepartmentId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileId    String?
+  file      File?            @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, isRead])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  action      String
+  entityType  String
+  entityId    String?
+  description String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+}
