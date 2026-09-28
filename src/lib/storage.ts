@@ -1,6 +1,5 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 export interface StorageDriver {
   put(key: string, body: Buffer, contentType?: string): Promise<void>;
@@ -8,6 +7,9 @@ export interface StorageDriver {
   delete(key: string): Promise<void>;
 }
 
+// Development driver — local disk.
+// PRODUCTION: replace with the S3 driver, run `npm i @aws-sdk/client-s3`,
+// and set STORAGE_DRIVER=s3 (serverless hosting has ephemeral disks).
 const localDriver: StorageDriver = {
   async put(key, body) {
     const full = path.join(process.cwd(), process.env.STORAGE_DIR ?? "storage", key);
@@ -22,31 +24,6 @@ const localDriver: StorageDriver = {
   },
 };
 
-function s3Driver(): StorageDriver {
-  const client = new S3Client({
-    region: process.env.S3_REGION,
-    endpoint: process.env.S3_ENDPOINT || undefined,
-    forcePathStyle: !!process.env.S3_ENDPOINT, // MinIO & most S3-compatible providers
-    credentials: {
-      accessKeyId: process.env.S3_ACCESS_KEY!,
-      secretAccessKey: process.env.S3_SECRET_KEY!,
-    },
-  });
-  const bucket = process.env.S3_BUCKET!;
-  return {
-    async put(key, body, contentType) {
-      await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType }));
-    },
-    async get(key) {
-      const res = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-      return Buffer.from(await res.Body!.transformToByteArray());
-    },
-    async delete(key) {
-      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
-    },
-  };
-}
-
 export function getStorage(): StorageDriver {
-  return process.env.STORAGE_DRIVER === "s3" ? s3Driver() : localDriver;
+  return localDriver;
 }

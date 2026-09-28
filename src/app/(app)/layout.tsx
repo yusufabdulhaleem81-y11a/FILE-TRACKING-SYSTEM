@@ -4,7 +4,7 @@
 // import type { NotificationItem } from "@/types";
 import { requireUser } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
-import { AppShell } from "@/components/layouts/app-shell";
+import { AppShell } from "@/components/layout/app-shell";
 import type { NotificationItem } from "@/types";
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
