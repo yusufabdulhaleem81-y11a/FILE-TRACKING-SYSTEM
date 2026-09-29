@@ -66,7 +66,7 @@ export default async function ReceivePage() {
           </div>
         )}
         <p className="mt-4 text-xs text-muted-foreground">
-          Tip: files with status <Badge variant="outline" className={MOVEMENT_META.SENT.className}>In Transit</Badge> must be received before they can be sent again.
+          Files with status <Badge variant="outline" className={MOVEMENT_META.SENT.className}>In Transit</Badge> must be received before they can be sent again.
         </p>
       </CardContent>
     </Card>

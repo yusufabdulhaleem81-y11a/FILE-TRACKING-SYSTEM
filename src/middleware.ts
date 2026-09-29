@@ -5,7 +5,7 @@ export const { auth: middleware } = NextAuth(authConfig);
 
 export default middleware((req) => {
   const isLoggedIn = !!req.auth;
-  const { pathname } = req.nextUrl;
+  const { pathname } = req.nextUrl; // ← this line was missing in your copy
 
   if (pathname.startsWith("/api/")) {
     if (!isLoggedIn) return Response.json({ error: "Unauthorized" }, { status: 401 });
